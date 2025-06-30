@@ -7,6 +7,7 @@ export class ProjectController {
     static createProject = async (req: Request, res: Response) => {
         try {
            await Project.create(req.body)
+           res.status(201).json({ message: 'Proyecto creado con éxito' });
         } catch (error) {
             console.log(colors.red.bold(error))
         }
