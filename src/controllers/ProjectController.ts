@@ -6,8 +6,8 @@ import Project from "../models/Project"
 export class ProjectController {
     static createProject = async (req: Request, res: Response) => {
         try {
-           await Project.create(req.body)
-           res.status(201).json({ message: 'Proyecto creado con éxito' });
+            await Project.create(req.body)
+            res.status(201).json({ message: 'Proyecto creado con éxito' });
         } catch (error) {
             console.log(colors.red.bold(error))
         }
@@ -20,20 +20,26 @@ export class ProjectController {
             console.log(colors.red.bold(error))
         }
     }
-    static getProjectById = async (req: Request, res: Response) => {
+    static getProjectById = async (req: Request, res: Response) : Promise<any> => {
+        const { id } = req.params
         try {
-            const project = (await Project.findById(req.params.id)).populated('tasks')
+            const project = await Project.findById(id).populate('tasks')
+            if (!project) {
+                const error = new Error('Proyecto no encontrado')
+                return res.status(404).json({ error: error.message })
+            }
             res.json(project)
         } catch (error) {
             console.log(colors.red.bold(error))
+            res.status(500).json({ message: 'Error del servidor' });
         }
     }
-    static updateProject = async (req: Request, res: Response) : Promise<any> => {
+    static updateProject = async (req: Request, res: Response): Promise<any> => {
         try {
             const project = await Project.findById(req.params.id)
-            if(!project){
+            if (!project) {
                 const error = new Error('Proyecto no encontrado')
-                return res.status(404).json({error: error.message})
+                return res.status(404).json({ error: error.message })
             }
             project.clientName = req.body.clientName
             project.projectName = req.body.projectName
