@@ -2,6 +2,8 @@ import type { Request, Response } from 'express';
 import User from '../models/User';
 import colors from 'colors'
 import { hashPassword } from '../utils/auth';
+import Token from '../models/Token';
+import { generateToken } from '../utils/token';
 
 
 export class AuthController {
@@ -20,7 +22,12 @@ export class AuthController {
 
             const user = new User(req.body)
             user.password = await hashPassword(password)
-            await user.save()
+            // Genera token
+            const token = new Token()
+            token.token = generateToken()
+            token.user = user.id 
+
+            await Promise.allSettled([user.save(), token.save()])
             res.status(201).json({ message: 'Cuenta creada, revisa tu email para confirmarla.' });
         } catch (error) {
             console.log(colors.red.bold(error))
