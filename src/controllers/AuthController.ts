@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import User from '../models/User';
 import colors from 'colors'
-import { hashPassword } from '../utils/auth';
+import { checkPassword, hashPassword } from '../utils/auth';
 import Token from '../models/Token';
 import { generateToken } from '../utils/token';
 import { transporter } from '../config/nodemailer';
@@ -43,19 +43,59 @@ export class AuthController {
     static confirmAccount = async (req: Request, res: Response): Promise<any> => {
         try {
             const { token } = req.body
-            const tokenExist = await Token.findOne({token})
-            if(!tokenExist){
+            const tokenExist = await Token.findOne({ token })
+            if (!tokenExist) {
                 const error = new Error('Token no valido')
-                return res.status(401).json({error: error.message})
+                return res.status(404).json({ error: error.message })
             }
             const user = await User.findById(tokenExist.user)
             user.confirmed = true
             await Promise.allSettled([
-                user.save(), 
+                user.save(),
                 tokenExist.deleteOne()
             ])
 
             res.status(201).json({ message: 'Cuenta confirmada correctamente' });
+        } catch (error) {
+            console.log(colors.red.bold(error))
+            res.status(500).json({ message: 'Error al iniciar sesion' });
+        }
+    }
+
+
+    static loginAccount = async (req: Request, res: Response): Promise<any> => {
+        try {
+            const { email, password } = req.body
+            const user = await User.findOne({ email: email })
+            if (!user) {
+                const error = new Error('Usuario no encontrado')
+                return res.status(404).json({ error: error.message })
+            }
+            if (!user.confirmed) {
+                const token = new Token()
+                token.token = generateToken()
+                token.user = user.id
+
+                await token.save()
+
+                // Enviar email
+                AuthEmail.sendConfirmationEmail({
+                    email: user.email,
+                    name: user.name,
+                    token: token.token
+                })
+
+                const error = new Error('La cuenta no ha sido confirmada, hemos enviado un correo de confirmación a tu email')
+                return res.status(401).json({ error: error.message })
+            }
+            const isPasswordCorrect = await checkPassword(password, user.password)
+            if (isPasswordCorrect) {
+
+                const error = new Error('Contraseña incorrecta')
+                return res.status(401).json({ error: error.message })
+            }
+
+            res.send('Autenticado..')
         } catch (error) {
             console.log(colors.red.bold(error))
             res.status(500).json({ message: 'Error al iniciar sesion' });

@@ -24,5 +24,17 @@ router.post('/confirm-account',
     AuthController.confirmAccount
 )
 
+router.post('/login',
+    body('email').notEmpty().withMessage('Email no valido'),
+    body('password').notEmpty().withMessage('El password no puede ir vacío'),
+    handleInputErrors,
+    AuthController.loginAccount
+)
+
+
+
+
+
+
 
 export default router
