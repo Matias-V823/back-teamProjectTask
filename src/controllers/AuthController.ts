@@ -4,6 +4,8 @@ import colors from 'colors'
 import { hashPassword } from '../utils/auth';
 import Token from '../models/Token';
 import { generateToken } from '../utils/token';
+import { transporter } from '../config/nodemailer';
+import { AuthEmail } from '../emails/AuthEmail';
 
 
 export class AuthController {
@@ -15,20 +17,45 @@ export class AuthController {
             const userExist = await User.findOne({ email })
             if (userExist) {
                 const error = new Error('El usuario ya está registrado')
-                return res.status(409).json({error: error.message})
+                return res.status(409).json({ error: error.message })
             }
-
-
-
             const user = new User(req.body)
             user.password = await hashPassword(password)
             // Genera token
             const token = new Token()
             token.token = generateToken()
-            token.user = user.id 
+            token.user = user.id
+
+            // Enviar email
+            AuthEmail.sendConfirmationEmail({
+                email: user.email,
+                name: user.name,
+                token: token.token
+            })
 
             await Promise.allSettled([user.save(), token.save()])
             res.status(201).json({ message: 'Cuenta creada, revisa tu email para confirmarla.' });
+        } catch (error) {
+            console.log(colors.red.bold(error))
+            res.status(500).json({ message: 'Error al iniciar sesion' });
+        }
+    }
+    static confirmAccount = async (req: Request, res: Response): Promise<any> => {
+        try {
+            const { token } = req.body
+            const tokenExist = await Token.findOne({token})
+            if(!tokenExist){
+                const error = new Error('Token no valido')
+                return res.status(401).json({error: error.message})
+            }
+            const user = await User.findById(tokenExist.user)
+            user.confirmed = true
+            await Promise.allSettled([
+                user.save(), 
+                tokenExist.deleteOne()
+            ])
+
+            res.status(201).json({ message: 'Cuenta confirmada correctamente' });
         } catch (error) {
             console.log(colors.red.bold(error))
             res.status(500).json({ message: 'Error al iniciar sesion' });
