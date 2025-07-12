@@ -1,14 +1,23 @@
 import type { Request, Response } from 'express';
-import bcrypt from 'bcrypt'
 import User from '../models/User';
 import colors from 'colors'
 import { hashPassword } from '../utils/auth';
 
 
 export class AuthController {
-    static createAccount = async (req: Request, res: Response) => {
+    static createAccount = async (req: Request, res: Response): Promise<any> => {
         try {
-            const { password } = req.body
+            const { password, email } = req.body
+
+            //prevenir duplicados
+            const userExist = await User.findOne({ email })
+            if (userExist) {
+                const error = new Error('El usuario ya está registrado')
+                return res.status(409).json({error: error.message})
+            }
+
+
+
             const user = new User(req.body)
             user.password = await hashPassword(password)
             await user.save()
