@@ -87,9 +87,10 @@ export class AuthEmail {
                     <p>Hola ${user.name},</p>
                     
                     <p>¡Gracias por registrarte en nuestra plataforma! Para completar tu registro, por favor confirma tu cuenta haciendo clic en el siguiente botón:</p>
+                    <p>Recuerda: Tienes solo 10 minutos para confirmar tu cuenta o el token de validacion caducará</p>
                     
                     <p style="text-align: center;">
-                        <a href="${process.env.FRONTEND_URL}/auth/confirmar-cuenta?token=${user.token}" class="button">
+                        <a href="${process.env.FRONTEND_URL}/auth/confirm-account?token=${user.token}" class="button">
                             Confirmar mi cuenta
                         </a>
                     </p>
@@ -111,5 +112,109 @@ export class AuthEmail {
             </html>
             `
         })
+    }
+    static forgotPasswordEmail = async (user: IEmail) => {
+        await transporter.sendMail({
+            from: 'admin <admin@explobyte.com>',
+            to: user.email,
+            subject: 'teamProjectTask - Restablece tu contraseña',
+            text: `Para restablecer tu contraseña, haz clic en el siguiente enlace: ${process.env.FRONTEND_URL}/auth/forgot-password?token=${user.token}`,
+            html: `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Restablecer contraseña</title>
+            <style>
+                body {
+                    font-family: 'Arial', sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }
+                .header {
+                    background-color: #2563eb;
+                    padding: 20px;
+                    text-align: center;
+                    border-radius: 8px 8px 0 0;
+                }
+                .header h1 {
+                    color: white;
+                    margin: 0;
+                    font-size: 24px;
+                }
+                .content {
+                    padding: 30px;
+                    background-color: #f9fafb;
+                    border-left: 1px solid #e5e7eb;
+                    border-right: 1px solid #e5e7eb;
+                }
+                .footer {
+                    padding: 20px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: #6b7280;
+                    background-color: #f3f4f6;
+                    border-radius: 0 0 8px 8px;
+                    border-left: 1px solid #e5e7eb;
+                    border-right: 1px solid #e5e7eb;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                .button {
+                    display: inline-block;
+                    padding: 12px 24px;
+                    background-color: #2563eb;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    margin: 20px 0;
+                }
+                .button:hover {
+                    background-color: #1d4ed8;
+                }
+                .highlight {
+                    background-color: #fef08a;
+                    padding: 2px 4px;
+                    border-radius: 4px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Restablecer contraseña</h1>
+            </div>
+            
+            <div class="content">
+                <p>Hola ${user.name},</p>
+                
+                <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta. Para continuar, haz clic en el siguiente botón:</p>
+                <p><span class="highlight">Este enlace expirará en 10 minutos</span> por motivos de seguridad.</p>
+                
+                <p style="text-align: center;">
+                    <a href="${process.env.FRONTEND_URL}/auth/forgot-password?token=${user.token}" class="button">
+                        Restablecer contraseña
+                    </a>
+                </p>
+                
+                <p>Si no puedes hacer clic en el botón, copia y pega esta URL en tu navegador:</p>
+                <p><a href="${process.env.FRONTEND_URL}/auth/forgot-password?token=${user.token}">
+                    ${process.env.FRONTEND_URL}/auth/forgot-password?token=${user.token}
+                </a></p>
+                
+                <p>Si no solicitaste este cambio, por favor ignora este mensaje y considera <span class="highlight">cambiar tu contraseña</span> como medida de seguridad.</p>
+            </div>
+            
+            <div class="footer">
+                <p>© ${new Date().getFullYear()} teamProjectTask. Todos los derechos reservados.</p>
+                <p>Si tienes problemas, contáctanos en <a href="mailto:soporte@explobyte.com">soporte@explobyte.com</a></p>
+            </div>
+        </body>
+        </html>
+        `
+        });
     }
 }

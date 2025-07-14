@@ -31,6 +31,22 @@ router.post('/login',
     AuthController.loginAccount
 )
 
+router.post('/new-token',
+    body('email').notEmpty().withMessage('Email no valido'),
+    handleInputErrors,
+    AuthController.newToken
+)
+router.post('/request-code',
+    body('email').notEmpty().withMessage('Email no valido'),
+    handleInputErrors,
+    AuthController.requestConfirmationCode
+)
+router.post('/forgot-password',
+    body('email').notEmpty().withMessage('Email no valido'),
+    handleInputErrors,
+    AuthController.forgotPassword
+)
+
 
 
 
