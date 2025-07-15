@@ -6,6 +6,7 @@ import Token from '../models/Token';
 import { generateToken } from '../utils/token';
 import { transporter } from '../config/nodemailer';
 import { AuthEmail } from '../emails/AuthEmail';
+import { generateJWT } from '../utils/jwt';
 
 
 export class AuthController {
@@ -93,8 +94,10 @@ export class AuthController {
                 const error = new Error('Contraseña incorrecta')
                 return res.status(401).json({ error: error.message })
             }
+            const token = generateJWT({id: user.id})
 
-            res.send('Autenticado..')
+            res.send(token)
+
         } catch (error) {
             console.log(colors.red.bold(error))
             res.status(500).json({ message: 'Error al iniciar sesion' });
