@@ -160,7 +160,7 @@ export class AuthController {
                 token: token.token
             })
 
-            await Promise.allSettled([ token.save()])
+            await Promise.allSettled([token.save()])
             res.status(201).json({ message: 'Se envío un nuevo token, revisa tu email para confirmarla.' });
         } catch (error) {
             console.log(colors.red.bold(error))
@@ -182,7 +182,7 @@ export class AuthController {
             token.token = generateToken()
             token.user = user.id
 
-            await Promise.allSettled([ token.save()])
+            await Promise.allSettled([token.save()])
             // Enviar email
             AuthEmail.forgotPasswordEmail({
                 email: user.email,
@@ -191,6 +191,45 @@ export class AuthController {
             })
 
             res.status(201).json({ message: 'Revisa el email y sigue las instrucciones.' });
+        } catch (error) {
+            console.log(colors.red.bold(error))
+            res.status(500).json({ message: 'Error crear nuevo token' });
+        }
+    }
+    static validateTokenPassword = async (req: Request, res: Response): Promise<any> => {
+        try {
+            const { token } = req.body
+
+            //prevenir duplicados
+            const tokenExist = await Token.findOne({ token })
+            if (!tokenExist) {
+                const error = new Error('Token no valido')
+                return res.status(409).json({ error: error.message })
+            }
+
+            res.status(201).json({ message: 'Token valido, Define tu nuevo password' });
+        } catch (error) {
+            console.log(colors.red.bold(error))
+            res.status(500).json({ message: 'Error crear nuevo token' });
+        }
+    }
+    static updatePasswordWithToken = async (req: Request, res: Response): Promise<any> => {
+        try {
+            const { token } = req.params
+            const { password, password_confirmation } = req.body
+
+            const tokenExist = await Token.findOne({ token })
+            if (!tokenExist) { 
+                const error = new Error('Token no valido')
+                return res.status(409).json({ error: error.message })
+            }
+
+            const user = await User.findById(tokenExist.user)
+            user.password = await hashPassword(password),
+
+
+            await Promise.allSettled([user.save(), tokenExist.deleteOne()])
+            res.status(201).json({ message: 'Contraseña actualizada correctamente, vuelve a iniciar sesión' });
         } catch (error) {
             console.log(colors.red.bold(error))
             res.status(500).json({ message: 'Error crear nuevo token' });
