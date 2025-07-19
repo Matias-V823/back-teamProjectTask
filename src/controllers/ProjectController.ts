@@ -5,9 +5,10 @@ import Project from "../models/Project"
 
 export class ProjectController {
     static createProject = async (req: Request, res: Response) => {
-        console.log(req.user)
+        const project = new Project(req.body)
+        project.manager = req.user.id
         try {
-            await Project.create(req.body)
+            await project.save()
             res.status(201).json({ message: 'Proyecto creado con éxito' });
         } catch (error) {
             console.log(colors.red.bold(error))
@@ -15,18 +16,26 @@ export class ProjectController {
     }
     static getAllProjects = async (req: Request, res: Response) => {
         try {
-            const projects = await Project.find({})
+            const projects = await Project.find({
+                $or: [
+                    { manager: req.user.id }
+                ]
+            })
             res.json(projects)
         } catch (error) {
             console.log(colors.red.bold(error))
         }
     }
-    static getProjectById = async (req: Request, res: Response) : Promise<any> => {
+    static getProjectById = async (req: Request, res: Response): Promise<any> => {
         const { id } = req.params
         try {
             const project = await Project.findById(id).populate('tasks')
             if (!project) {
                 const error = new Error('Proyecto no encontrado')
+                return res.status(404).json({ error: error.message })
+            }
+            if (project.manager.toString() !== req.user.id.toString()) {
+                const error = new Error('Acción no válida')
                 return res.status(404).json({ error: error.message })
             }
             res.json(project)
@@ -42,6 +51,10 @@ export class ProjectController {
                 const error = new Error('Proyecto no encontrado')
                 return res.status(404).json({ error: error.message })
             }
+            if (project.manager.toString() !== req.user.id.toString()) {
+                const error = new Error('Solo el manager puede actualizar el proyecto')
+                return res.status(404).json({ error: error.message })
+            }
             project.clientName = req.body.clientName
             project.projectName = req.body.projectName
             project.description = req.body.description
@@ -54,6 +67,11 @@ export class ProjectController {
     static deleteProject = async (req: Request, res: Response) => {
         try {
             const project = await Project.findById(req.params.id)
+            if (project.manager.toString() !== req.user.id.toString()) {
+                const error = new Error('Solo el manager puede eliminar un proyecto')
+                res.status(404).json({ error: error.message })
+                return
+            }
             await project.deleteOne()
             res.send('Proyecto eliminado')
         } catch (error) {
