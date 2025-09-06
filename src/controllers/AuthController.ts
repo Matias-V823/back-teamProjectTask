@@ -221,7 +221,7 @@ export class AuthController {
             const { password, password_confirmation } = req.body
 
             const tokenExist = await Token.findOne({ token })
-            if (!tokenExist) { 
+            if (!tokenExist) {
                 const error = new Error('Token no valido')
                 return res.status(409).json({ error: error.message })
             }
@@ -230,11 +230,14 @@ export class AuthController {
             user.password = await hashPassword(password),
 
 
-            await Promise.allSettled([user.save(), tokenExist.deleteOne()])
+                await Promise.allSettled([user.save(), tokenExist.deleteOne()])
             res.status(201).json({ message: 'Contraseña actualizada correctamente, vuelve a iniciar sesión' });
         } catch (error) {
             console.log(colors.red.bold(error))
             res.status(500).json({ message: 'Error crear nuevo token' });
         }
+    }
+    static user = async (req: Request, res: Response): Promise<any> => {
+        return res.json(req.user)
     }
 }

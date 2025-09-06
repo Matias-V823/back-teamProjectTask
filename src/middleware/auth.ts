@@ -28,6 +28,8 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             const user = await await User.findById(decoded.id).select('-password -confirmed')
             if (user) {
                 req.user = user
+                next()
+
             } else {
                 res.status(500).json({ error: 'Usuario no registrado' })
             }
@@ -36,6 +38,4 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     } catch (error) {
         res.status(500).json({ error: 'Token no válido' })
     }
-
-    next()
 }
