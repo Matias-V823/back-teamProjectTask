@@ -37,10 +37,12 @@ const ProjectSchema: Schema = new Schema({
         type: Types.ObjectId,
         ref: 'user'
     },
-    team: {
-        type: Types.ObjectId,
-        ref: 'user'
-    }
+    team: [
+        {
+            type: Types.ObjectId,
+            ref: 'user'
+        }
+    ]
 }, { timestamps: true })
 
 
