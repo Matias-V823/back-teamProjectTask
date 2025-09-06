@@ -31,4 +31,16 @@ export class TeamMemberController {
         res.send('Miembro agregado al equipo correctamente');
 
     }
+
+    static deleteMember = async (req: Request, res: Response): Promise<any> => {
+        const { id } = req.body;
+
+        if (!req.project.team.some(team => team.toString() === id)) {
+            return res.status(409).json({ msg: 'No pertenece a equipo' });
+        }
+
+        req.project.team = req.project.team.filter(team => team.toString() !== id);
+        await req.project.save();
+        res.send('Miembro eliminado del equipo correctamente');
+    }
 }
