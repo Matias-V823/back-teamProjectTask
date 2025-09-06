@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import User from "../models/User";
+import Project from "../models/Project";
 
 export class TeamMemberController {
     static findMemberByEmail = async (req: Request, res: Response): Promise<any> => {
@@ -42,5 +43,10 @@ export class TeamMemberController {
         req.project.team = req.project.team.filter(team => team.toString() !== id);
         await req.project.save();
         res.send('Miembro eliminado del equipo correctamente');
+    }
+
+    static getMembers = async (req: Request, res: Response): Promise<any> => {
+        const project = await Project.findById(req.project.id).select('team').populate('team', '-password -__v -createdAt -updatedAt -projects -tasks');
+        res.json(project.team);
     }
 }

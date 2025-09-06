@@ -108,6 +108,10 @@ router.delete('/:projectId/team/:memberId',
     TeamMemberController.deleteMember
 )
 
+router.get('/:projectId/team',
+    TeamMemberController.getMembers
+)
+
 
 
 
