@@ -33,6 +33,12 @@ const ProjectSchema: Schema = new Schema({
             ref: 'task'
         }
     ],
+    productBacklog: [
+        {
+            type: Types.ObjectId,
+            ref: 'product_backlog_item'
+        }
+    ],
     manager: {
         type: Types.ObjectId,
         ref: 'user'

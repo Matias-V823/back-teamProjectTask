@@ -7,7 +7,8 @@ import { projectExists } from '../middleware/project';
 import { taskBelongsToProject, taskExists } from '../middleware/task';
 import { authenticate } from '../middleware/auth';
 import { TeamMemberController } from '../controllers/TeamController';
-
+import { ProductBacklogController } from '../controllers/ProductBacklogController';
+import { onlyManager } from '../middleware/onlyManager'
 
 const router = Router();
 
@@ -112,6 +113,48 @@ router.get('/:projectId/team',
 )
 
 
+/* Routes for Product Backlog */
+router.get('/:projectId/product-backlog',
+    ProductBacklogController.list
+)
 
+router.post('/:projectId/product-backlog',
+    onlyManager,
+    body('persona').notEmpty().withMessage('La persona es obligatoria'),
+    body('objetivo').notEmpty().withMessage('El objetivo es obligatorio'),
+    body('beneficio').notEmpty().withMessage('El beneficio es obligatorio'),
+    handleInputErrors,
+    ProductBacklogController.create
+)
+
+router.get('/:projectId/product-backlog/:storyId',
+    param('storyId').isMongoId().withMessage('ID no válido'),
+    handleInputErrors,
+    ProductBacklogController.getOne
+)
+
+router.put('/:projectId/product-backlog/:storyId',
+    onlyManager,
+    param('storyId').isMongoId().withMessage('ID no válido'),
+    body('persona').notEmpty().withMessage('La persona es obligatoria'),
+    body('objetivo').notEmpty().withMessage('El objetivo es obligatorio'),
+    body('beneficio').notEmpty().withMessage('El beneficio es obligatorio'),
+    handleInputErrors,
+    ProductBacklogController.update
+)
+
+router.delete('/:projectId/product-backlog/:storyId',
+    onlyManager,
+    param('storyId').isMongoId().withMessage('ID no válido'),
+    handleInputErrors,
+    ProductBacklogController.remove
+)
+
+router.post('/:projectId/product-backlog/reorder',
+    onlyManager,
+    body('order').isArray({ min: 1 }).withMessage('Order debe ser un arreglo'),
+    handleInputErrors,
+    ProductBacklogController.reorder
+)
 
 export default router
