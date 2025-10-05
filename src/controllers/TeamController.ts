@@ -46,7 +46,22 @@ export class TeamMemberController {
     }
 
     static getMembers = async (req: Request, res: Response): Promise<any> => {
-        const project = await Project.findById(req.project.id).select('team').populate('team', '-password -__v -createdAt -updatedAt -projects -tasks');
-        res.json(project.team);
+        try {
+            const project = await Project.findById(req.project.id)
+                .select('team manager')               
+                .populate('team', '-password -__v -createdAt -updatedAt -projects -tasks')
+                .lean();
+
+            if (!project) {
+                return res.status(404).json({ msg: 'Proyecto no encontrado' });
+            }
+
+            return res.json({
+                managerId: project.manager?.toString(),  
+                team: project.team
+            });
+        } catch (error) {
+            return res.status(500).json({ msg: 'Error al obtener miembros del proyecto' });
+        }
     }
 }
