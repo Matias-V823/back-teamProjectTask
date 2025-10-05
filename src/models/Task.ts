@@ -16,6 +16,8 @@ export interface ITask extends Document {
     name: string
     description: string
     project: Types.ObjectId
+    sprint?: Types.ObjectId | null
+    story?: Types.ObjectId | null
     status: TaskStatus
 }
 
@@ -33,6 +35,18 @@ export const TaskSchema: Schema = new Schema({
     project: {
         type: Types.ObjectId,
         ref: 'projects'
+    },
+    sprint: {
+        type: Types.ObjectId,
+        ref: 'sprint',
+        default: null,
+        index: true
+    },
+    story: {
+        type: Types.ObjectId,
+        ref: 'product_backlog_item',
+        default: null,
+        index: true
     },
     status:{
         type: String,
