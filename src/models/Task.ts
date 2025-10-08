@@ -19,6 +19,7 @@ export interface ITask extends Document {
     sprint?: Types.ObjectId | null
     story?: Types.ObjectId | null
     status: TaskStatus
+    assignedTo?: Types.ObjectId | null
 }
 
 export const TaskSchema: Schema = new Schema({
@@ -52,6 +53,12 @@ export const TaskSchema: Schema = new Schema({
         type: String,
         enum: Object.values(taskStatus),
         default: taskStatus.PENDING
+    },
+    assignedTo: {
+        type: Types.ObjectId,
+        ref: 'user',
+        default: null,
+        index: true
     }
 }, { timestamps: true })
 

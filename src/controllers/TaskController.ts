@@ -9,8 +9,20 @@ export class TaskController {
         try {
             const task = new Task(req.body)
             task.project = req.project.id
+
+            if (typeof req.body.assignedTo !== 'undefined' && req.body.assignedTo !== null && req.body.assignedTo !== '') {
+                const assignedId = String(req.body.assignedTo)
+                const isMember = req.project.team.some(t => t.toString() === assignedId)
+                if (!isMember) {
+                    return res.status(400).json({ error: 'El usuario asignado no pertenece al equipo del proyecto' })
+                }
+                task.assignedTo = assignedId as any
+            } else {
+                task.assignedTo = null as any
+            }
+
             req.project.tasks.push(task.id)
-            await Promise.allSettled([task.save(), req.project.save()])  // nos permite guardar los project y task al mismo tiempo
+            await Promise.allSettled([task.save(), req.project.save()])  
             res.send('Tarea creada correctamente')
         } catch (error) {
             res.status(500).json({error: 'Hubo un error'})
@@ -36,6 +48,21 @@ export class TaskController {
         try {
             req.task.name = req.body.name
             req.task.description = req.body.description
+
+            if (Object.prototype.hasOwnProperty.call(req.body, 'assignedTo')) {
+                const value = req.body.assignedTo
+                if (value === null || value === '') {
+                    req.task.assignedTo = null as any
+                } else {
+                    const assignedId = String(value)
+                    const isMember = req.project.team.some(t => t.toString() === assignedId)
+                    if (!isMember) {
+                        return res.status(400).json({ error: 'El usuario asignado no pertenece al equipo del proyecto' })
+                    }
+                    req.task.assignedTo = assignedId as any
+                }
+            }
+
             await req.task.save()
             res.send("Tarea actualizada correctamente")
         } catch (error) {

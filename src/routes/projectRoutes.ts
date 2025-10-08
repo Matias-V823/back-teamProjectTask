@@ -54,6 +54,7 @@ router.param('projectId', projectExists)
 router.post('/:projectId/tasks',
     body('name').notEmpty().withMessage('El nombre de la tarea es obligatorio'),
     body('description').notEmpty().withMessage('El nombre de la descripcion es obligatoria'),
+    body('assignedTo').optional({ values: 'falsy' }).isMongoId().withMessage('assignedTo debe ser un ID válido'),
     TaskController.createTask
 )
 
@@ -74,6 +75,7 @@ router.put('/:projectId/tasks/:taskId',
     param('taskId').isMongoId().withMessage('ID no válido'),
     body('name').notEmpty().withMessage('El nombre de la tarea es obligatorio'),
     body('description').notEmpty().withMessage('El nombre de la descripcion es obligatoria'),
+    body('assignedTo').optional({ values: 'falsy' }).isMongoId().withMessage('assignedTo debe ser un ID válido'),
     handleInputErrors,
     TaskController.updateTask
 )
