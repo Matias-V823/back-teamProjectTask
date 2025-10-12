@@ -42,6 +42,13 @@ router.get('/:projectId/metrics',
     ProjectController.perProjectMetrics
 )
 
+router.get('/:projectId/report-metrics',
+    param('projectId').isMongoId().withMessage('ID no válido'),
+    handleInputErrors,
+    projectExists,
+    ProjectController.reportMetrics
+)
+
 router.put('/:id',
     param('id').isMongoId().withMessage('ID no válido'),
     body('projectName').notEmpty().withMessage('El nombre del proyecto es obligatorio'),

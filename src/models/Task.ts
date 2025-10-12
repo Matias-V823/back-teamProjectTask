@@ -20,6 +20,8 @@ export interface ITask extends Document {
     story?: Types.ObjectId | null
     status: TaskStatus
     assignedTo?: Types.ObjectId | null
+    createdAt: Date
+    updatedAt: Date
 }
 
 export const TaskSchema: Schema = new Schema({
