@@ -26,10 +26,20 @@ router.post('/',
 router.get('/',
     ProjectController.getAllProjects)
 
+// Metrics
+router.get('/metrics', ProjectController.metrics)
+
 router.get('/:id',
     param('id').isMongoId().withMessage('ID no válido'),
     handleInputErrors,
     ProjectController.getProjectById
+)
+
+router.get('/:projectId/metrics',
+    param('projectId').isMongoId().withMessage('ID no válido'),
+    handleInputErrors,
+    projectExists,
+    ProjectController.perProjectMetrics
 )
 
 router.put('/:id',
