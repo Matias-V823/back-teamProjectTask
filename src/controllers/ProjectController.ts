@@ -197,7 +197,7 @@ export class ProjectController {
 
             const [tasks, sprints, teamUsers] = await Promise.all([
                 Task.find({ project: project._id }).select('status sprint assignedTo updatedAt createdAt'),
-                Sprint.find({ project: project._id }).select('name status startDate endDate createdAt').sort({ endDate: 1 }),
+                Sprint.find({ project: project._id }).select('name startDate endDate createdAt status').sort({ endDate: 1 }),
                 User.find({ _id: { $in: project.team } }).select('name role')
             ])
 
@@ -206,59 +206,69 @@ export class ProjectController {
                 return acc
             }, {})
             const backlogTotal = tasks.length
+            backlogStatus.total = backlogTotal
 
-            const activeSprint = sprints.find(s => s.status === 'active') || null
+            const today = new Date()
+
+            const datedSprints = sprints.filter(s => s.startDate && s.endDate)
+            const activeSprint = datedSprints.find(s =>
+                s.startDate <= today && today <= s.endDate
+            ) || null
+
             let sprintMetrics: any = { hasActive: false }
-            if (activeSprint) {
-                const sprintTasks = tasks.filter(t => String(t.sprint) === String(activeSprint._id))
-                const sprintCompleted = sprintTasks.filter(t => t.status === 'completed').length
-                const total = sprintTasks.length
-                const progress = total > 0 ? Math.round((sprintCompleted / total) * 100) : 0
-                const daysTotal = Math.max(1, Math.ceil((activeSprint.endDate.getTime() - activeSprint.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1)
-                const daysRemaining = Math.max(0, Math.ceil((activeSprint.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
 
-                const seriesDates: Date[] = []
-                const start = new Date(activeSprint.startDate)
-                const end = new Date(activeSprint.endDate)
-                start.setHours(0,0,0,0)
-                end.setHours(0,0,0,0)
-                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                    seriesDates.push(new Date(d))
+            if (activeSprint) {
+                const sprintTasks = tasks.filter(t => t.sprint?.toString() === activeSprint._id.toString())
+                const totalTasks = sprintTasks.length
+                const completed = sprintTasks.filter(t => t.status === 'completed').length
+                const progress = totalTasks > 0 ? Math.round((completed / totalTasks) * 100) : 0
+
+                const daysTotal = Math.max(
+                    1,
+                    Math.ceil(
+                        (activeSprint.endDate.getTime() - activeSprint.startDate.getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    )
+                )
+                const daysRemaining = Math.max(
+                    0,
+                    Math.ceil(
+                        (activeSprint.endDate.getTime() - today.getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    )
+                )
+
+                // --- BURN DOWN / BURN UP ---
+                const burnDown: { date: string; idealRemaining: number; actualRemaining: number }[] = []
+                const burnUp: { date: string; idealCompleted: number; actualCompleted: number }[] = []
+
+                for (let i = 0; i <= daysTotal; i++) {
+                    const d = new Date(activeSprint.startDate)
+                    d.setDate(d.getDate() + i)
+                    const dateStr = d.toISOString().slice(0, 10)
+
+                    const ratio = daysTotal === 0 ? 1 : i / daysTotal
+                    const idealRemaining = Math.max(0, Math.round(totalTasks * (1 - ratio)))
+                    const idealCompleted = Math.min(totalTasks, Math.round(totalTasks * ratio))
+
+                    const completedUntilDate = sprintTasks.filter(t =>
+                        t.status === 'completed' &&
+                        t.updatedAt.toISOString().slice(0, 10) <= dateStr
+                    ).length
+                    const actualCompleted = completedUntilDate
+                    const actualRemaining = Math.max(0, totalTasks - actualCompleted)
+
+                    burnDown.push({ date: dateStr, idealRemaining, actualRemaining })
+                    burnUp.push({ date: dateStr, idealCompleted, actualCompleted })
                 }
-                const denom = Math.max(1, seriesDates.length - 1)
-                let cumulativeCompleted = 0
-                const burnDown = seriesDates.map((d, idx) => {
-                    const dayEnd = new Date(d)
-                    dayEnd.setHours(23,59,59,999)
-                    const completedUpToDay = sprintTasks.filter(t => t.status === 'completed' && t.updatedAt <= dayEnd).length
-                    cumulativeCompleted = Math.max(cumulativeCompleted, completedUpToDay)
-                    const idealRemaining = Math.max(0, Math.round(total - (total * (idx / denom))))
-                    const actualRemaining = Math.max(0, total - cumulativeCompleted)
-                    return {
-                        date: d.toISOString().slice(0,10),
-                        idealRemaining,
-                        actualRemaining
-                    }
-                })
-                const burnUp = seriesDates.map((d, idx) => {
-                    const dayEnd = new Date(d)
-                    dayEnd.setHours(23,59,59,999)
-                    const completedUpToDay = sprintTasks.filter(t => t.status === 'completed' && t.updatedAt <= dayEnd).length
-                    const idealCompleted = Math.min(total, Math.round(total * (idx / denom)))
-                    return {
-                        date: d.toISOString().slice(0,10),
-                        idealCompleted,
-                        actualCompleted: completedUpToDay
-                    }
-                })
 
                 sprintMetrics = {
                     hasActive: true,
                     name: activeSprint.name,
                     startDate: activeSprint.startDate,
                     endDate: activeSprint.endDate,
-                    totalTasks: total,
-                    completed: sprintCompleted,
+                    totalTasks,
+                    completed,
                     progress,
                     daysTotal,
                     daysRemaining,
@@ -267,52 +277,59 @@ export class ProjectController {
                 }
             }
 
-            const completedSprints = sprints.filter(s => s.status === 'completed').sort((a, b) => b.endDate.getTime() - a.endDate.getTime())
+            const completedSprints = datedSprints
+                .filter(s => s.endDate < today)
+                .sort((a, b) => b.endDate.getTime() - a.endDate.getTime())
+
             let lastCompletedSprint: any = null
             if (completedSprints.length > 0) {
                 const last = completedSprints[0]
-                const sprintTasks = tasks.filter(t => String(t.sprint) === String(last._id))
-                const unfinished = sprintTasks.filter(t => t.status !== 'completed').length
-                lastCompletedSprint = { name: last.name, endDate: last.endDate, unfinishedTasks: unfinished }
+                const lastTasks = tasks.filter(t => t.sprint?.toString() === last._id.toString())
+                const unfinished = lastTasks.filter(t => t.status !== 'completed').length
+                lastCompletedSprint = {
+                    name: last.name,
+                    endDate: last.endDate,
+                    unfinishedTasks: unfinished
+                }
             }
 
             const days: { date: string; completed: number }[] = []
             for (let i = 6; i >= 0; i--) {
-                const date = new Date()
-                date.setDate(date.getDate() - i)
-                const yyyy = date.getFullYear()
-                const mm = String(date.getMonth() + 1).padStart(2, '0')
-                const dd = String(date.getDate()).padStart(2, '0')
-                const key = `${yyyy}-${mm}-${dd}`
-                const startD = new Date(yyyy, date.getMonth(), date.getDate(), 0, 0, 0)
-                const endD = new Date(yyyy, date.getMonth(), date.getDate(), 23, 59, 59)
-                const completedCount = tasks.filter(t => t.status === 'completed' && t.updatedAt >= startD && t.updatedAt <= endD).length
-                days.push({ date: key, completed: completedCount })
+                const d = new Date(today)
+                d.setDate(today.getDate() - i)
+                const dateStr = d.toISOString().slice(0, 10)
+                const completedThatDay = tasks.filter(t =>
+                    t.status === 'completed' &&
+                    t.updatedAt.toISOString().slice(0, 10) === dateStr
+                ).length
+
+                days.push({ date: dateStr, completed: completedThatDay })
             }
 
-            const scrumTeam = teamUsers.filter(u => u.role === 'Scrum Team')
-            const members = scrumTeam.map(u => {
-                const myTasks = tasks.filter(t => String(t.assignedTo) === String(u._id))
-                const totals = myTasks.reduce<Record<string, number>>((acc, t) => {
+            const members = teamUsers.map(u => {
+                const memberTasks = tasks.filter(t => t.assignedTo?.toString() === u._id.toString())
+                const mTotal = memberTasks.length
+                const mCompleted = memberTasks.filter(t => t.status === 'completed').length
+                const completionRate = mTotal > 0 ? Math.round((mCompleted / mTotal) * 100) : 0
+
+                const statusTotals = memberTasks.reduce<Record<string, number>>((acc, t) => {
                     acc[t.status] = (acc[t.status] || 0) + 1
                     return acc
                 }, {})
-                const total = myTasks.length
-                const mCompleted = totals['completed'] || 0
-                const completionRate = total > 0 ? Math.round((mCompleted / total) * 100) : 0
+
                 return {
                     id: u._id,
                     name: u.name,
                     role: u.role,
+                    completionRate,
                     totals: {
-                        total,
-                        pending: totals['pending'] || 0,
-                        onHold: totals['onHold'] || 0,
-                        inProgress: totals['inProgress'] || 0,
-                        underReview: totals['underReview'] || 0,
-                        completed: mCompleted
-                    },
-                    completionRate
+                        total: mTotal,
+                        pending: statusTotals.pending || 0,
+                        onHold: statusTotals.onHold || 0,
+                        inProgress: statusTotals.inProgress || 0,
+                        underReview: statusTotals.underReview || 0,
+                        completed: statusTotals.completed || 0
+                    }
                 }
             })
 
@@ -322,7 +339,7 @@ export class ProjectController {
                 projectId: project._id,
                 projectName: project.projectName,
                 teamSize: project.team.length,
-                backlogStatus: { ...backlogStatus, total: backlogTotal },
+                backlogStatus,
                 sprint: sprintMetrics,
                 throughput7d: days,
                 members,
@@ -331,7 +348,7 @@ export class ProjectController {
             })
         } catch (error) {
             console.log(colors.red.bold(error))
-            res.status(500).json({ error: 'Error al obtener métricas detalladas' })
+            res.status(500).json({ error: 'Error al obtener métricas del proyecto' })
         }
     }
 }
